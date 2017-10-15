@@ -58,5 +58,3 @@ def is_match(query, rel):
             return query[1] in (rel.uidA, rel.uidB)
         return True
     return False
-
-__all__ = ['Relation', 'load', 'save', 'add', 'get']

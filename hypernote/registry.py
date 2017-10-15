@@ -91,5 +91,3 @@ def escape_regex(s):
             ret += '\\' # escape it
         ret += ch
     return ret
-
-__all__ = ['load', 'save', 'add', 'get', 'search']
