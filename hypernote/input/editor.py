@@ -9,7 +9,7 @@ class Cancelled(RuntimeError):
 class Invalid(RuntimeError):
     pass
 
-def input_note(note_cls, editor):
+def input_note(note_cls, prefilled={}, editor='vim'):
     """Get note details from user using a text editor.
 
     note_cls: the class of the note to get.
@@ -30,7 +30,10 @@ def input_note(note_cls, editor):
 
         if part.name in note_cls.required:
             text += '# REQUIRED\n'
-        text += disp_name + ' = \n\n'
+        text += disp_name + ' = '
+        if part.name in prefilled:
+            text += prefilled[part.name]
+        text += '\n\n'
 
     # call the editor
     fd, filename = tempfile.mkstemp()

@@ -67,6 +67,24 @@ class Signal:
         self.sig = sig
     def __int__(self):
         return self.sig
+    def __bool__(self):
+        return self.is_ok()
+    def __str__(self):
+        if self.is_ok():
+            return ''
+        msg = 'Note creation error:\n'
+        counter = 1
+        if self.has(FSF_INSUFFICIENT_INFO):
+            msg += '{}. Insufficient info given.'.format(counter)
+        if self.has(FSF_AUTOFILL_FAILED):
+            msg += '{}. Autofill failed.'.format(counter)
+        return msg
+        
+    def has(self, flag):
+        return bool(self.sig & flag)
+    def is_ok(self):
+        return (not self.has(FSF_INSUFFICIENT_INFO) and
+                not self.has(FSF_AUTOFILL_FAILED))
 
 class Note:
     """Represents a generalized pickleable note."""

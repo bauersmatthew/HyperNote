@@ -2,6 +2,7 @@
 from collections import namedtuple
 import regex
 import pickle
+import random
 
 # one entry in the search table
 STEntry = namedtuple('STEntry', ('text', 'uid'))
@@ -9,6 +10,17 @@ search_table = []
 
 # uid -> note
 notes = {}
+
+def gen_uid_possibility():
+    """Generate a possible ID (unchecked)."""
+    return random.getrandbits(32)
+    
+def gen_uid():
+    """Generate a new UID, assuming that the registry is loaded."""
+    uid = gen_uid_possibility()
+    while uid in notes:
+        uid = gen_uid_possibility()
+    return uid
 
 def load(path):
     """Load the registry from file."""
