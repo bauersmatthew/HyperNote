@@ -2,7 +2,7 @@
 import tempfile
 import os
 import subprocess
-from input.base import Cancelled, Invalid
+from hypernote.input.base import Cancelled, Invalid
 
 class Cancelled(RuntimeError):
     pass
@@ -30,6 +30,8 @@ def input_note(note_cls, prefilled={}, editor='vim'):
 
         if part.name in note_cls.required:
             text += '# REQUIRED\n'
+        if part.name in note_cls.unsafe:
+            text += "# MAY BE UNSAFE TO AUTOFILL; TYPE '@@' TO AUTOFILL.\n"
         text += disp_name + ' = '
         if part.name in prefilled:
             text += prefilled[part.name]
@@ -60,9 +62,6 @@ def input_note(note_cls, prefilled={}, editor='vim'):
             raise Invalid()
         key, val = line.split('=')
         key, val = key.strip(), val.strip()
-        if not val:
-            # left empty; autofill
-            continue
         info[dispname_to_name[key]] = val
 
     return info

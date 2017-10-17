@@ -24,6 +24,8 @@ def gen_uid():
 
 def load(path):
     """Load the registry from file."""
+    if path is None:
+        return
     fin = open(path, 'rb')
     while True:
         try:
@@ -36,6 +38,8 @@ def load(path):
 
 def save(path):
     """Save the registry to file."""
+    if path is None:
+        return
     global notes
     fout = open(path, 'wb')
     for note in notes:

@@ -52,59 +52,64 @@ Part = namedtuple('Part', (
     'do_autolink', # 'str; 'unlinked' or 'autolinked'
 ))
 
-
-
 AUTOFILL = ''
 AUTOFILL_SAFETY = '@@'
 
-SIG_OK = 0 # not an actual flag
-FSF_INSUFFICIENT_INFO = (1 << 0)
-FSF_AUTOFILL_UNSURE = (1 << 1)
-FSF_AUTOFILL_FAILED = (1 << 2)
-class Signal:
-    """A signal raised by the __init__ method of Note classes."""
-    def __init__(self, sig):
-        self.sig = sig
-    def __int__(self):
-        return self.sig
+class CreationStatus:
+    """Extra info associated with the de novo creation of a Note."""
+    def __init__(self,
+                 insufficient_info=False, autofill_failed=False,
+                 autofill_unsure=False, unsure_fields=[]):
+        self.insufficient_info = insufficient_info
+        self.autofill_failed = autofill_failed
+        self.autofill_unsure = autofill_unsure
+        self.unsure_fields = copy.copy(unsure_fields)
+
     def __bool__(self):
-        return self.is_ok()
+        """Return true if good; false if failed."""
+        return (not self.insufficient_info) and (not self.autofill_failed)
+
     def __str__(self):
-        if self.is_ok():
+        """Return an empty string if no FATAL error were encountered."""
+        if self:
             return ''
         msg = 'Note creation error:\n'
-        counter = 1
-        if self.has(FSF_INSUFFICIENT_INFO):
-            msg += '{}. Insufficient info given.'.format(counter)
-        if self.has(FSF_AUTOFILL_FAILED):
-            msg += '{}. Autofill failed.'.format(counter)
+        num = 1
+        if self.insufficient_info:
+            msg += str(num) + \
+                   '. Insufficient info given (required fields omitted).\n'
+            num += 1
+        if self.autofill_failed:
+            msg += str(num) + \
+                   '. Autofill failed.\n'
         return msg
-        
-    def has(self, flag):
-        return bool(self.sig & flag)
-    def is_ok(self):
-        return (not self.has(FSF_INSUFFICIENT_INFO) and
-                not self.has(FSF_AUTOFILL_FAILED))
+
+class CreationFailure(Exception):
+    """Exception associated with failing to create a Note de novo.
+
+    Essentially just wraps a CreationStatus. The intent is to not allow
+    anyone from keeping around references to invalid notes."""
+    def __init__(self, cstatus):
+        self.status = cstatus
 
 class Note:
     """Represents a generalized pickleable note."""
     def __init__(self, uid, vals):
         """Initialize from plain text values."""
         self.uid = uid
+        self.cstatus = CreationStatus()
+
         # check required attributes
         for attr in self.required:
             if attr not in vals:
-                raise Signal(FSF_INSUFFICIENT_INFO)
+                self.signal = Signal(FSF_INSUFFICIENT_INFO)
+                return
 
         # try autofill
-        sig = None
-        try:
-            self.autofill(vals)
-        except Signal as s:
-            sig = s
+        self.autofill(vals) # edits cstatus
 
+        # fill into object attributes
         self.fill(vals)
-        raise sig
 
     def __getstate__(self):
         """Get the pickling state."""
@@ -139,23 +144,21 @@ class ToolNote(Note):
 
     searchable = ('name', 'cmd')
     required = ('cmd',)
+    unsafe = ('ver',)
 
     def autofill(self, vals):
         """Attempt to autofill empty values."""
-        send = SIG_OK
-
         if vals['name'] == AUTOFILL:
-            vals['name'] = vals.cmd
+            vals['name'] = vals['cmd']
 
         if vals['ver'] == AUTOFILL_SAFETY:
             ver = utils.autodetect_version(vals['cmd'])
             if ver is None or ver == '':
-                send |= FSF_AUTOFILL_FAILED
+                self.cstatus.autofill_failed = True
             else:
                 vals['ver'] = ver
-                send |= FSF_AUTOFILL_UNSURE
-
-        raise Signal(send)
+                self.cstatus.autofill_unsure = True
+                self.cstatus.unsure_fields.append('ver')
 
 class ActionNote(Note):
     """Represents a note about a command run (action taken)."""
@@ -167,17 +170,14 @@ class ActionNote(Note):
 
     required = ('shellcmd',)
     searchable = tuple()
+    unsafe = tuple()
 
     def autofill(self, vals):
         """Attempt to autofill empty values."""
-        send = SIG_OK
-
         if vals['toolcmd'] == AUTOFILL:
             vals['toolcmd'] = vals['shellcmd'].split(' ')[0]
         if vals['time'] == AUTOFILL:
             vals['time'] = utils.get_timestamp()
-            
-        raise Signal(send)
 
 class DataNote(Note):
     """Represents a note about a data file."""
@@ -189,13 +189,9 @@ class DataNote(Note):
 
     searchable = ('name', 'path')
     required = ('path',)
+    unsafe = tuple()
 
     def autofill(self, vals):
         """Attempt to autofill empty values."""
-        send = SIG_OK
-
         if vals['name'] == AUTOFILL:
             vals['name'] = vals['path'].split('/')[-1]
-
-        self.fill(vals)
-
