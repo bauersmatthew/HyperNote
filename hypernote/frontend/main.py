@@ -22,19 +22,20 @@ def main_internal():
     command = 'public_cmd_' + sys.argv[0]
     if command not in globals():
         raise RuntimeError(
-            "Command '{}' not recognized! Type 'hnote help' for help.")
+            "Command '{}' not recognized! Type 'hnote help' for help.".format(
+                sys.argv[0]))
     # pass rest of args down to subcommand
     globals()[command](sys.argv[1:])
 
 def find_registry(base='.'):
     """Find the registry."""
     test_path = os.path.relpath('{}/.hnote'.format(base))
-    if os.path.isdir(test_path):
+    if os.path.isfile(test_path):
         return test_path
     # .hnote not found; go to parent if not at root already
     if os.path.samefile(base, '/'): # at root; abort
         return None
-    return '{}/..'.format(base)
+    return find_registry('{}/..'.format(base))
 
 def use_reg(inner):
     """Wrapper for functions that need to load the registry."""
@@ -43,6 +44,7 @@ def use_reg(inner):
         registry.load(path)
         inner(args)
         registry.save(path)
+    fun.__doc__ = inner.__doc__
     return fun
 
 def confirm_note(new_note):

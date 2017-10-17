@@ -1,7 +1,7 @@
 """Implement a representation for linked notes."""
 from collections import namedtuple
 import copy
-import utils
+from hypernote import utils
 
 Pos = namedtuple('Pos', ('start', 'end')) # start, end are ints
 Link = namedtuple('Link', ('pos', 'dest')) # pos is Pos; dest is UID
