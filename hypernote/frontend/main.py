@@ -49,17 +49,29 @@ def use_reg(inner):
 
 def confirm_note(new_note):
     """Confirm with the user that the note information is correct."""
-    if not new_note.cstatus.unsure_fields:
-        return True
-    dispnames = {p[0] : p[1] for p in new_note.parts}
+    # confirm autofills
     w = sys.stdout.write
-    w('Please confirm that the following fields have been autofilled '
-      'correctly:\n')
-    for field in new_note.cstatus.unsure_fields:
-        w('{}: {}\n'.format(dispnames[field], getattr(new_note, field).text))
-    w('Correct? [y/] ')
-    if input().lower().strip() not in ('y', 'yes'):
-        return False
+    if new_note.cstatus.unsure_fields:
+        dispnames = {p[0] : p[1] for p in new_note.parts}
+        w('Please confirm that the following fields have been autofilled '
+          'correctly:\n')
+        for field in new_note.cstatus.unsure_fields:
+            w('{}: {}\n'.format(dispnames[field], getattr(new_note, field).text))
+        w('Correct? [y/] ')
+        if input().lower().strip() not in ('y', 'yes'):
+            return False
+
+    # confirm links
+    if new_note.cstatus.autolinked_words:
+        w('Please confirm that the following fields have been linked '
+          'correctly:\n')
+        for word in new_note.cstatus.autolinked_words:
+            linked = new_note.cstatus.autolinked_words[word]
+            w("'{}' ==> {}\n".format(word, linked))
+        w('Correct? [y/] ')
+        if input().lower().strip() not in ('y', 'yes'):
+            return False
+
     return True
 
 def public_cmd_help(args):
@@ -97,7 +109,7 @@ def create_note_standard(note_type, vals):
         new_note = note_type(registry.gen_uid(), vals)
     except note.CreationFailure as cfail:
         raise RuntimeError(str(cfail.status))
-    if new_note.cstatus.autofill_unsure and not confirm_note(new_note):
+    if not confirm_note(new_note):
         raise RuntimeError('Note creation cancelled by user.')
     registry.add(new_note)
 

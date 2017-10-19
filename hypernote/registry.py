@@ -28,12 +28,13 @@ def load(path):
         return
     fin = open(path, 'rb')
     while True:
+        note = None
         try:
             note = pickle.load(fin)
-            add(note)
         except:
             # eof
             break
+        add(note)
     fin.close()
 
 def save(path):
@@ -43,7 +44,7 @@ def save(path):
     global notes
     fout = open(path, 'wb')
     for note in notes:
-        pickle.dump(note, fout)
+        pickle.dump(notes[note], fout)
     fout.close()
 
 def add(note):
@@ -66,7 +67,20 @@ def get(uid):
 def search(query):
     """Identify matches between the plaintext query and note UIDs.
 
-    Return a list of up to five best-matching UIDs."""
+    Return a list of matching UIDs."""
+    global search_table
+    matches = [e for e in search_table if e.text.lower() == query.lower()]
+    matches_unique_uids = []
+    for m in matches:
+        if m.uid not in matches_unique_uids:
+            matches_unique_uids.append(m.uid)
+    return matches_unique_uids
+
+def search_depr(query):
+    """Identify matches between the plaintext query and note UIDs.
+
+    Return a list of up to five best-matching UIDs.
+    Deprecated!"""
     global search_table
     # find the top 5 matches?
     Match = namedtuple('Match', 'uid', 'score')
@@ -85,17 +99,21 @@ def match(query, source):
     """Return the 'match score' between the given query and source strings."""
     # count total length of query contigs found in source
     score = 0
-    for contig in contigs(query):
+    minlen = max([3, len(source)//3])
+    for contig in contigs(query, minlen):
         escaped = escape_regex(contig)
         # FOOD FOR THOUGHT: does the number found matter here?
         num_found = len(regex.findall(escaped, source))
         score += num_found*len(contig)
     return score/len(source)
 
-def contigs(s):
-    """Generate all possible 'contigs' in the given string."""
+def contigs(s, minlen=1):
+    """Generate all 'contigs' in the given string at least minlen long.
+
+    Starts from the identity contig; shortens from the end before moving
+    the start position up."""
     for c_spos in range(len(s)):
-        for c_len in range(1, len(s)-c_spos+1):
+        for c_len in reversed(range(minlen, len(s)-c_spos+1)):
             yield s[c_spos:c_spos+c_len]
 
 def escape_regex(s):

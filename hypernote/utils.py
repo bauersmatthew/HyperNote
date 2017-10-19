@@ -41,3 +41,20 @@ def get_timestamp():
     p = subprocess.Popen('date', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     o, e = p.communicate()
     return o.decode().strip()
+
+def find_word_boundaries(source):
+    """Return a list of tuples containing [start, end) for each word."""
+    in_word = False
+    bounds = []
+    cur_bound_start = None
+    whitespace = ' \t\n'
+    for i, ch in enumerate(source):
+        if not in_word and ch not in whitespace:
+            in_word = True
+            cur_bound_start = i
+        elif in_word and ch in whitespace:
+            in_word = False
+            bounds.append((cur_bound_start, i))
+    if in_word:
+        bounds.append((cur_bound_start, len(source)))
+    return bounds
