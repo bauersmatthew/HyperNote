@@ -256,7 +256,7 @@ class DataNote(Note):
     """Represents a note about a data file."""
     parts = (
         Part('name', 'Name', raw_string),
-        Part('path', 'Path', raw_string),
+        Part('path', 'Path', normalize_path),
         Part('src', 'Source', autolink_text), # kind of like a secondary description
         Part('desc', 'Description', autolink_text))
 
