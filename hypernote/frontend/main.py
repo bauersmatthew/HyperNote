@@ -58,7 +58,8 @@ def confirm_note(new_note):
         w('Please confirm that the following fields have been autofilled '
           'correctly:\n')
         for field in new_note.cstatus.unsure_fields:
-            w('{}: {}\n'.format(dispnames[field], getattr(new_note, field).text))
+            w('{}: {}\n'.format(dispnames[field],
+                                str(getattr(new_note, field))))
         w('Correct? [y/] ')
         if input().lower().strip() not in ('y', 'yes'):
             return False

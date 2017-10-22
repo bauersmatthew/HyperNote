@@ -3,6 +3,8 @@ from collections import namedtuple
 import copy
 from hypernote import utils
 from hypernote import registry
+from datetime import datetime
+import dateutil.parser
 
 Pos = namedtuple('Pos', ('start', 'end')) # start, end are ints
 Link = namedtuple('Link', ('pos', 'dest')) # pos is Pos; dest is UID
@@ -13,6 +15,9 @@ class LinkedText:
         """Initialize an empty LinkedText."""
         self.text = text
         self.links = []
+
+    def __str__(self):
+        return self.text
 
     def link(self, pos, uid):
         """Add a link at the given position."""
@@ -51,9 +56,34 @@ class LinkedText:
         self.text = state['text']
         self.links = state['links']
 
+def autolink_text(text, note):
+    """Return autolinked LinkedText."""
+    lt = LinkedText(text)
+    bounds = utils.find_word_boundaries(text)
+    for wb in bounds:
+        word = text[wb[0]:wb[1]]
+        matches = registry.search(word)
+        if matches:
+            # (JUST TAKES THE FIRST UID MATCHED... FIX THIS?? TODO)
+            match_uid = registry.search(word)[0]
+            lt.link(Pos(wb[0], wb[1]), match_uid)
+            note.cstatus.autolinked_words[word] = str(registry.get(match_uid))
+    return lt
+
+def raw_string(text, note):
+    """Identity function for text that accepts note as a parameter."""
+    return text
+
+def parse_timestamp(text, note):
+    try:
+        return dateutil.parser.parse(text)
+    except:
+        raise RuntimeError("Failed to parse timestamp '{}'!".format(text))
+
 Part = namedtuple('Part', (
     'name', # str
-    'display_name' # str or None
+    'display_name', # str or None
+    'loader'
 ))
 
 AUTOFILL = ''
@@ -132,14 +162,11 @@ class Note:
 
     def fill(self, vals):
         """Fill self with values according to parts info."""
+        # find all part constructors
         for part in self.parts:
             val = vals[part.name]
-            lt = None
-            if part.name in self.linked:
-                lt = self.autolink(val)
-            else:
-                lt = LinkedText(val)
-            setattr(self, part.name, lt)
+            processed = part.loader(val, self)
+            setattr(self, part.name, processed)
 
     def autolink(self, text):
         """Return autolinked LinkedText."""
@@ -157,19 +184,18 @@ class Note:
 
     def __str__(self):
         """Convert into the best human-readible identifier of this note."""
-        idstr = getattr(self, self.strify[1]).text
+        idstr = str(getattr(self, self.strify[1]))
         return "{} '{}'".format(self.strify[0], idstr)
 
 class ToolNote(Note):
     """Represents a note about a tool."""
     parts = (
-        Part('name', 'Name'),
-        Part('cmd', 'Command'),
-        Part('ver', 'Version'),
-        Part('desc', 'Description'))
+        Part('name', 'Name', raw_string),
+        Part('cmd', 'Command', raw_string),
+        Part('ver', 'Version', raw_string),
+        Part('desc', 'Description', autolink_text))
 
     searchable = ('name', 'cmd')
-    linked = ('desc',)
     required = ('cmd',)
     unsafe = ('ver',)
     strify = ('Tool', 'name')
@@ -191,14 +217,13 @@ class ToolNote(Note):
 class ActionNote(Note):
     """Represents a note about a command run (action taken)."""
     parts = (
-        Part('shellcmd', 'Shell command'),
-        Part('toolcmd', 'Tool'),
-        Part('time', 'Time'),
-        Part('desc', 'Description'))
+        Part('shellcmd', 'Shell command', autolink_text),
+        Part('toolcmd', 'Tool', autolink_text),
+        Part('time', 'Time', parse_timestamp),
+        Part('desc', 'Description', autolink_text))
 
     required = ('shellcmd',)
     searchable = tuple()
-    linked = ('shellcmd', 'toolcmd', 'desc')
     unsafe = tuple()
     # custom __str__ function; no strify
 
@@ -212,18 +237,17 @@ class ActionNote(Note):
     def __str__(self):
         """Overrides base Note __str__()."""
         s = "Action using '{}' at time '{}'".format(
-            self.toolcmd.text, self.time.text)
+            self.toolcmd.text, str(self.time))
 
 class DataNote(Note):
     """Represents a note about a data file."""
     parts = (
-        Part('name', 'Name'),
-        Part('path', 'Path'),
-        Part('src', 'Source'), # kind of like a secondary description
-        Part('desc', 'Description'))
+        Part('name', 'Name', raw_string),
+        Part('path', 'Path', raw_string),
+        Part('src', 'Source', autolink_text), # kind of like a secondary description
+        Part('desc', 'Description', autolink_text))
 
     searchable = ('name', 'path')
-    linked = ('src', 'desc')
     required = ('path',)
     unsafe = tuple()
     strify = ('Data', 'name')

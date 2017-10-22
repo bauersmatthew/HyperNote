@@ -57,7 +57,7 @@ def add(note):
     # check that a note doesn't already exist with these
     # searchable properties
     for attr in note.searchable:
-        query = getattr(note, attr).text
+        query = str(getattr(note, attr))
         if search(query):
             raise RuntimeError('Another note already exists with a searchable'
                                " property of '{}'.".format(query))
@@ -67,7 +67,7 @@ def add(note):
 
     # register search terms
     for attr in note.searchable:
-        entry = STEntry(getattr(note, attr).text, note.uid)
+        entry = STEntry(str(getattr(note, attr)), note.uid)
         search_table.append(entry)
 
 def get(uid):

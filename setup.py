@@ -4,7 +4,7 @@ setup(
     name="HyperNote",
     version="0.1.0",
     packages=['hypernote', 'hypernote.frontend', 'hypernote.input'],
-    install_requires=[],
+    install_requires=['python-dateutil'],
     entry_points={
         'console_scripts' : ['hnote = hypernote.frontend.main:main']},
 

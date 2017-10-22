@@ -1,6 +1,7 @@
 """Implement various utilities."""
 import subprocess
 import time
+import datetime
 
 def get_process_info(cmd):
     """Get the stdout, stderr, and returnvalue of a command."""
@@ -37,10 +38,8 @@ def autodetect_version(cmd):
     return first_line
 
 def get_timestamp():
-    """Get the current timestamp as given by the date utility."""
-    p = subprocess.Popen('date', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    o, e = p.communicate()
-    return o.decode().strip()
+    """Get the current timestamp as a string."""
+    return str(datetime.datetime.now())
 
 def find_word_boundaries(source):
     """Return a list of tuples containing [start, end) for each word."""
