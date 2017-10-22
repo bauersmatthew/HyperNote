@@ -2,6 +2,7 @@
 import subprocess
 import time
 import datetime
+import os.path
 
 def get_process_info(cmd):
     """Get the stdout, stderr, and returnvalue of a command."""
@@ -57,3 +58,13 @@ def find_word_boundaries(source):
     if in_word:
         bounds.append((cur_bound_start, len(source)))
     return bounds
+
+def find_registry(base='.'):
+    """Find the registry."""
+    test_path = os.path.relpath('{}/.hnote'.format(base))
+    if os.path.isfile(test_path):
+        return test_path
+    # .hnote not found; go to parent if not at root already
+    if os.path.samefile(base, '/'): # at root; abort
+        return None
+    return find_registry('{}/..'.format(base))

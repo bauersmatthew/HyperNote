@@ -1,6 +1,7 @@
 """Implement a representation for linked notes."""
 from collections import namedtuple
 import copy
+import os.path
 from hypernote import utils
 from hypernote import registry
 from datetime import datetime
@@ -75,10 +76,22 @@ def raw_string(text, note):
     return text
 
 def parse_timestamp(text, note):
+    """Parse a timestamp string; return datetime object."""
     try:
         return dateutil.parser.parse(text)
     except:
         raise RuntimeError("Failed to parse timestamp '{}'!".format(text))
+
+def normalize_path(path, note):
+    """If the path is relative, make it relative to the Notebook file."""
+    notebook_dir = os.path.abspath(os.path.dirname(utils.find_registry()))
+    if notebook_dir in os.path.dirname(os.path.abspath(path)):
+        # path is in the base directory or a child directory; store as relative
+        return os.path.relpath(path, start=notebook_dir)
+    else:
+        # path is outside of the base directory; store as absolute
+        return os.path.abspath(path)
+    
 
 Part = namedtuple('Part', (
     'name', # str

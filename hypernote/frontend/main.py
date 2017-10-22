@@ -1,9 +1,9 @@
 """The main command line interface for the program."""
 import sys
-import os.path
 from hypernote.input.editor import input_note
 from hypernote import note
 from hypernote import registry
+from hypernote import utils
 import subprocess
 
 def main():
@@ -28,19 +28,10 @@ def main_internal():
     # pass rest of args down to subcommand
     globals()[command](sys.argv[1:])
 
-def find_registry(base='.'):
-    """Find the registry."""
-    test_path = os.path.relpath('{}/.hnote'.format(base))
-    if os.path.isfile(test_path):
-        return test_path
-    # .hnote not found; go to parent if not at root already
-    if os.path.samefile(base, '/'): # at root; abort
-        return None
-    return find_registry('{}/..'.format(base))
 
 def use_reg(inner):
     """Wrapper for functions that need to load the registry."""
-    path = find_registry()
+    path = utils.find_registry()
     def fun(args):
         registry.load(path)
         ret = inner(args)
