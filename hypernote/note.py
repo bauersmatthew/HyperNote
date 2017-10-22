@@ -134,7 +134,11 @@ class Note:
         """Fill self with values according to parts info."""
         for part in self.parts:
             val = vals[part.name]
-            lt = self.autolink(val)
+            lt = None
+            if part.name in self.linked:
+                lt = self.autolink(val)
+            else:
+                lt = LinkedText(val)
             setattr(self, part.name, lt)
 
     def autolink(self, text):
@@ -196,6 +200,7 @@ class ActionNote(Note):
     searchable = tuple()
     linked = ('shellcmd', 'toolcmd', 'desc')
     unsafe = tuple()
+    # custom __str__ function; no strify
 
     def autofill(self, vals):
         """Attempt to autofill empty values."""

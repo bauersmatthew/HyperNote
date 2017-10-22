@@ -48,8 +48,19 @@ def save(path):
     fout.close()
 
 def add(note):
-    """Add a note to the registry."""
+    """Add a note to the registry.
+
+    If another note already exists with one or more identical searchables,
+    raise a RuntimeError."""
     global notes, search_table
+
+    # check that a note doesn't already exist with these
+    # searchable properties
+    for attr in note.searchable:
+        query = getattr(note, attr).text
+        if search(query):
+            raise RuntimeError('Another note already exists with a searchable'
+                               " property of '{}'.".format(query))
 
     # "register" note
     notes[note.uid] = note

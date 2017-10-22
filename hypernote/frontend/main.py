@@ -113,7 +113,7 @@ def create_note_standard(note_type, vals):
         raise RuntimeError(str(cfail.status))
     if not confirm_note(new_note):
         raise RuntimeError('Note creation cancelled by user.')
-    registry.add(new_note)
+    registry.add(new_note) # just rethrow any errors caused by this
     return new_note.uid
 
 def standard_note_registration_command(docstr, note_type, trans):
