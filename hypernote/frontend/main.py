@@ -4,6 +4,7 @@ import os.path
 from hypernote.input.editor import input_note
 from hypernote import note
 from hypernote import registry
+import subprocess
 
 def main():
     """Entry point; handles exceptions thrown by main_internal()."""
@@ -42,8 +43,9 @@ def use_reg(inner):
     path = find_registry()
     def fun(args):
         registry.load(path)
-        inner(args)
+        ret = inner(args)
         registry.save(path)
+        return ret
     fun.__doc__ = inner.__doc__
     return fun
 
@@ -112,6 +114,7 @@ def create_note_standard(note_type, vals):
     if not confirm_note(new_note):
         raise RuntimeError('Note creation cancelled by user.')
     registry.add(new_note)
+    return new_note.uid
 
 def standard_note_registration_command(docstr, note_type, trans):
     """Create a standard note registration command function."""
@@ -119,7 +122,7 @@ def standard_note_registration_command(docstr, note_type, trans):
     def fun(args):
         prefilled = parse_prefilled_standard(args, trans)
         vals = input_note(note_type, prefilled)
-        create_note_standard(note_type, vals)
+        return create_note_standard(note_type, vals)
     fun.__doc__ = docstr
     return fun
     
@@ -145,9 +148,10 @@ public_cmd_action = standard_note_registration_command(
 def public_cmd_run(args):
     """run -s"shell command" [-t"tool"] [-w"time"] [-d"description"]
     Run and record a shell command."""
-    public_cmd_action(args)
-    # run the command...
-    # (TODO)
+    uid = public_cmd_action(args)
+    shellcmd = registry.get(uid).shellcmd.text
+    subprocess.run(shellcmd, shell=True)
+    return uid
 
 def public_cmd_init(args):
     """init
