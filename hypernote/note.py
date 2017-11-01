@@ -42,7 +42,7 @@ class LinkedText:
         """Iterate over all our links."""
         yield from self.links
 
-    def __getitem__(pos):
+    def __getitem__(self, pos):
         """Get the string corresponding to the given link pos."""
         return self.text[pos.start:pos.end]
 

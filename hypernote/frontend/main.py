@@ -4,6 +4,7 @@ from hypernote.input.editor import input_note
 from hypernote import note
 from hypernote import registry
 from hypernote import utils
+import hypernote.output.hyperpage
 import subprocess
 
 def main():
@@ -149,6 +150,12 @@ def public_cmd_init(args):
     """init
     Create an (empty) notebook in this directory."""
     registry.save('./.hnote')
+
+@use_reg
+def public_cmd_view(args):
+    """view
+    View a the notebook contents using HyperNote."""
+    hypernote.output.hyperpage.run()
 
 if __name__ == '__main__':
     main()
