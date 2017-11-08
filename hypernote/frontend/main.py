@@ -32,8 +32,11 @@ def main_internal():
 
 def use_reg(inner):
     """Wrapper for functions that need to load the registry."""
-    path = utils.find_registry()
     def fun(args):
+        path = utils.find_registry()
+        if path is None:
+            raise RuntimeError(
+                "Registry not found! Use 'hnote init' to create one.")
         registry.load(path)
         ret = inner(args)
         registry.save(path)
