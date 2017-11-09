@@ -3,6 +3,7 @@ import subprocess
 import time
 import datetime
 import os.path
+import string
 
 def get_process_info(cmd):
     """Get the stdout, stderr, and returnvalue of a command."""
@@ -47,16 +48,21 @@ def find_word_boundaries(source):
     in_word = False
     bounds = []
     cur_bound_start = None
-    whitespace = ' \t\n'
+    last_non_punctuation = None
+    breakchars = string.whitespace
+    nonwordchars = breakchars + string.punctuation
     for i, ch in enumerate(source):
-        if not in_word and ch not in whitespace:
+        if not in_word and ch not in nonwordchars:
             in_word = True
             cur_bound_start = i
-        elif in_word and ch in whitespace:
-            in_word = False
-            bounds.append((cur_bound_start, i))
+        if in_word:
+            if ch in breakchars:
+                in_word = False
+                bounds.append((cur_bound_start, last_non_punctuation+1))
+            elif ch not in string.punctuation:
+                last_non_punctuation = i
     if in_word:
-        bounds.append((cur_bound_start, len(source)))
+        bounds.append((cur_bound_start, last_non_punctuation+1))
     return bounds
 
 def find_registry(base='.'):
