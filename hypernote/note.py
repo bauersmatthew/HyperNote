@@ -3,7 +3,6 @@ from collections import namedtuple
 import copy
 import os.path
 from hypernote import utils
-from hypernote import registry
 from datetime import datetime
 import dateutil.parser
 
@@ -61,6 +60,7 @@ def autolink_text(text, note):
     """Return autolinked LinkedText."""
     lt = LinkedText(text)
     bounds = utils.find_word_boundaries(text)
+    from hypernote import registry
     for wb in bounds:
         word = text[wb[0]:wb[1]]
         matches = registry.search(word)
@@ -185,6 +185,7 @@ class Note:
         """Return autolinked LinkedText."""
         lt = LinkedText(text)
         bounds = utils.find_word_boundaries(text)
+        from hypernote import registry
         for wb in bounds:
             word = text[wb[0]:wb[1]]
             matches = registry.search(word)

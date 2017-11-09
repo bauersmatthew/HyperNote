@@ -3,6 +3,7 @@ from collections import namedtuple
 import regex
 import pickle
 import random
+from hypernote import fileio
 
 # one entry in the search table
 STEntry = namedtuple('STEntry', ('text', 'uid'))
@@ -13,7 +14,7 @@ notes = {}
 
 def gen_uid_possibility():
     """Generate a possible ID (unchecked)."""
-    return random.getrandbits(32)
+    return random.getrandbits(31) # 31 bits because we save as SIGNED
     
 def gen_uid():
     """Generate a new UID, assuming that the registry is loaded."""
@@ -26,26 +27,24 @@ def load(path):
     """Load the registry from file."""
     if path is None:
         return
-    fin = open(path, 'rb')
-    while True:
-        note = None
-        try:
-            note = pickle.load(fin)
-        except:
-            # eof
-            break
+    data_all = None
+    with open(path, 'rb') as fin:
+        data_all = bytearray(fin.read())
+    while data_all:
+        note = fileio.load_object(data_all)
         add(note)
-    fin.close()
 
 def save(path):
     """Save the registry to file."""
     if path is None:
         return
     global notes
-    fout = open(path, 'wb')
-    for note in notes:
-        pickle.dump(notes[note], fout)
-    fout.close()
+    with open(path, 'wb') as fout:
+        for uid in notes:
+            note = notes[uid]
+            enc = fileio.get_encoder(type(note))
+            data = enc(note)
+            fout.write(data)
 
 def add(note):
     """Add a note to the registry.
