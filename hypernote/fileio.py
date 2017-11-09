@@ -1,31 +1,35 @@
 """Handle registry input/output, including multiversion compatibility."""
 from hypernote import note
 from collections import OrderedDict
-from struct import pack
-from types import SimpleNamespace
+import struct
 import string
+from functools import wraps
+from datetime import datetime
 
 # dictionary (type -> function) of all encoders
 encoders = {}
 
-def encoder(inner, dtype):
+def encoder(dtype):
     """Wrapper for encoder functions."""
-    name = inner.__name__
-    parts = name.split('_')
-    typecode = parts[1]
-    version = parts[2]
+    def encoder_wrapper(inner):
+        name = inner.__name__
+        parts = name.split('_')
+        typecode = parts[1]
+        version = parts[2]
 
-    def fun(v):
-        data = inner(v)
-        typecode_b = bytes(typecode, 'utf8')
-        version_b = struct.pack('<i', int(version)) # store version as int
-        return typecode_b + version_b + data
-    fun.__name__ = inner.__name__
-    fun.__doc__ = inner.__doc__
+        @wraps(inner)
+        def fun(v):
+            data = inner(v)
+            typecode_b = bytes(typecode, 'utf8')
+            version_b = struct.pack('<i', int(version)) # store version as int
+            return typecode_b + version_b + data
+        fun.__name__ = inner.__name__
+        fun.__doc__ = inner.__doc__
 
-    global encoders
-    encoders[dtype] = fun
-    return fun
+        global encoders
+        encoders[dtype] = fun
+        return fun
+    return encoder_wrapper
 
 def get_encoder(dtype):
     """Get the encoder corresponding to the given datatype."""
@@ -39,7 +43,7 @@ def decoder(inner):
     name = inner.__name__
     parts = name.split('_')
     typecode = parts[1]
-    version = parts[2]
+    version = int(parts[2])
 
     global decoders
     decoders[typecode, version] = inner
@@ -85,6 +89,11 @@ def e_f_1(f):
     """Encode a float."""
     return struct.pack('<f', f)
 
+@encoder(datetime)
+def e_t_1(ts):
+    """Encode a timestamp."""
+    return get_encoder(float)(ts.timestamp())
+
 @encoder(note.LinkedText)
 def e_L_1(lt):
     """Encode LinkedText."""
@@ -97,7 +106,7 @@ def e_L_1(lt):
         data += get_encoder(int)(link.pos.end)
         data += get_encoder(type(link.dest))(link.dest)
     return data
-    
+
 @encoder(note.ToolNote)
 def e_T_1(n):
     """Encode a ToolNote."""
@@ -112,7 +121,7 @@ def e_A_1(n):
 @encoder(note.DataNote)
 def e_D_1(n):
     """Encode a DataNote."""
-    return encode_from_datascheme(n, ('name', 'path', 'src', 'desc'))
+    return encode_from_datascheme(n, ('uid', 'name', 'path', 'src', 'desc'))
 
 # ----------------------
 # ------ DECODERS ------
@@ -131,40 +140,51 @@ def extract_version(data):
 def decode_from_datascheme(data, dtype, scheme):
     """Encode a note from a datascheme."""
     # bypass calling the Note() constructor
-    obj = SimpleNamespace()
+    class EmptyClass:
+        pass
+    obj = EmptyClass()
     obj.__class__ = dtype
     for attr in scheme:
-        setattr(obj, attr,
-                load_object(data))
+        try:
+            setattr(obj, attr,
+                    load_object(data))
+        except:
+            raise
     return obj
 
 @decoder
 def d_s_1(b):
     """Decode a string."""
-    length = get_decoder(int)(b[:4])
-    ret = b.decode('utf8')[4:4+length]
-    del b[:4+length]
+    length = load_object(b) # int
+    ret = b[:length].decode('utf8')
+    del b[:length]
     return ret
 
 @decoder
 def d_i_1(b):
     """Decode an int."""
-    ret = struct.unpack('<i', b)[0]
+    ret = struct.unpack('<i', b[:4])[0]
     del b[:4]
     return ret
 
-@encoder
+@decoder
 def d_f_1(b):
     """Decode a float."""
-    ret = struct.unpack('<f', b)[0]
+    ret = struct.unpack('<f', b[:4])[0]
     del b[:4]
     return ret
+
+@decoder
+def e_t_1(b):
+    """Decode a timestamp."""
+    ts = load_object(b) # float
+    return datetime.fromtimestamp(ts)
 
 @decoder
 def d_L_1(b):
     """Decode LinkedText."""
     text = load_object(b)
-    lt = LinkedText(text)
+    lt = note.LinkedText(text)
     links_len = load_object(b)
     from hypernote.note import Pos
     for x in range(links_len):
@@ -191,6 +211,6 @@ def d_A_1(d):
 @decoder
 def d_D_1(d):
     """Decode a DataNote."""
-    return encode_from_datascheme(
+    return decode_from_datascheme(
         d, note.DataNote,
-        ('name', 'path', 'src', 'desc'))
+        ('uid', 'name', 'path', 'src', 'desc'))
