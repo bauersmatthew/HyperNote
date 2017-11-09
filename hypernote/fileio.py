@@ -49,6 +49,14 @@ def get_decoder(typecode, version):
     """Get the decoder corresponding to the given typecode and version."""
     return decoders[typecode, version]
 
+def load_object(b):
+    """Load the next object present in the given bytearray."""
+    tc = extract_typecode(b)
+    ver = extract_version(b)
+    dec = get_decoder(tc, ver)
+    obj = dec(b)
+    return obj
+
 # ----------------------
 # ------ ENCODERS ------
 # ----------------------
@@ -106,7 +114,6 @@ def e_D_1(n):
     """Encode a DataNote."""
     return encode_from_datascheme(n, ('name', 'path', 'src', 'desc'))
 
-
 # ----------------------
 # ------ DECODERS ------
 # ----------------------
@@ -127,9 +134,8 @@ def decode_from_datascheme(data, dtype, scheme):
     obj = SimpleNamespace()
     obj.__class__ = dtype
     for attr in scheme:
-        tc = extract_typecode(data)
-        ver = extract_version(data)
-        setattr(obj, attr, get_decoder(tc, ver))
+        setattr(obj, attr,
+                load_object(data))
     return obj
 
 @decoder
@@ -157,9 +163,16 @@ def d_f_1(b):
 @decoder
 def d_L_1(b):
     """Decode LinkedText."""
-    text = get_decoder('s')
-    data = bytes()
-    data += get_encoder(str)
+    text = load_object(b)
+    lt = LinkedText(text)
+    links_len = load_object(b)
+    from hypernote.note import Pos
+    for x in range(links_len):
+        start = load_object(b)
+        end = load_object(b)
+        uid = load_object(b)
+        lt.link(Pos(start, end), uid)
+    return lt
     
 @decoder
 def d_T_1(d):
